@@ -14,7 +14,7 @@
 @property (strong, nonatomic) NSString *sortBy;
 @property (strong, nonatomic) NSString *distance;
 @property BOOL *deals;
-@property (strong, nonatomic) NSArray *categories;
+@property (strong, nonatomic) NSDictionary *categories;
 @property (strong, nonatomic) NSDictionary *distanceConversions;
 @property (strong, nonatomic) NSDictionary *sortCodes;
 

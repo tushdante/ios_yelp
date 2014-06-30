@@ -7,6 +7,7 @@
 //
 
 #import "SearchViewController.h"
+#import "FilterViewController.h"
 #import "YelpClient.h"
 #import "Search.h"
 #import "Filters.h"
@@ -28,6 +29,7 @@ NSString * const kYelpTokenSecret = @"mqtKIxMIR4iBtBPZCmCLEb-Dz3Y";
 
 @property (weak, nonatomic) IBOutlet UIBarButtonItem *filterButton;
 @property (weak, nonatomic) IBOutlet UITableView *resultTableView;
+@property (strong, nonatomic) Filters *filters;
 
 
 @end
@@ -50,6 +52,11 @@ NSString * const kYelpTokenSecret = @"mqtKIxMIR4iBtBPZCmCLEb-Dz3Y";
     self.resultTableView.dataSource = self;
     self.resultTableView.delegate = self;
     [self.resultTableView registerNib:[UINib nibWithNibName:@"resultTableViewCell" bundle:nil] forCellReuseIdentifier:@"ResultCell"];
+//    [self.filterButton addTarget:self action:@selector(filterButton) forControlEvents:UIControlEventTouchDown];
+    self.filterButton.action = @selector(filterButton);
+    [self.filterButton setTarget:self];
+    self.navigationItem.titleView = self.searchBarField;
+
     
 }
 
@@ -60,47 +67,46 @@ NSString * const kYelpTokenSecret = @"mqtKIxMIR4iBtBPZCmCLEb-Dz3Y";
 }
 
 //Yelp Search
-- (void)yelpSearch
-{
-    // Perform a new search
-    //self.searchTerm = @"Thai";
-    // You can register for Yelp API keys here: http://www.yelp.com/developers/manage_api_keys
-    self.client = [[YelpClient alloc] initWithConsumerKey:kYelpConsumerKey consumerSecret:kYelpConsumerSecret accessToken:kYelpToken accessSecret:kYelpTokenSecret];
-    
-    [self.client searchWithTerm: @"Thai" success:^(AFHTTPRequestOperation *operation, id response)
-     {
-         //NSLog(@"sample response: %@", response);
-         
-         // response is a NSDictionary object
-         NSArray *businesses = response[@"businesses"];
-         
-         if(self.searchResult == nil){
-             
-             self.searchResult = [[NSMutableArray alloc] init];
-         }
-         
-         self.searchResult =  [Search loadInArray:businesses];
-         [self.resultTableView reloadData];
-         
-         
-     } failure:^(AFHTTPRequestOperation *operation, NSError *error)
-     {
-         NSLog(@"error: %@", [error description]);
-     }];
-    
-    
-}
+//- (void)yelpSearch
+//{
+//    // Perform a new search
+//    //self.searchTerm = @"Thai";
+//    // You can register for Yelp API keys here: http://www.yelp.com/developers/manage_api_keys
+//    self.client = [[YelpClient alloc] initWithConsumerKey:kYelpConsumerKey consumerSecret:kYelpConsumerSecret accessToken:kYelpToken accessSecret:kYelpTokenSecret];
+//    
+//    [self.client searchWithTerm: @"Thai" success:^(AFHTTPRequestOperation *operation, id response)
+//     {
+//         //NSLog(@"sample response: %@", response);
+//         
+//         // response is a NSDictionary object
+//         NSArray *businesses = response[@"businesses"];
+//         
+//         if(self.searchResult == nil){
+//             
+//             self.searchResult = [[NSMutableArray alloc] init];
+//         }
+//         
+//         self.searchResult =  [Search loadInArray:businesses];
+//         [self.resultTableView reloadData];
+//         
+//         
+//     } failure:^(AFHTTPRequestOperation *operation, NSError *error)
+//     {
+//         NSLog(@"error: %@", [error description]);
+//     }];
+//    
+//    
+//}
 
 #pragma mark - Table view methods
 //number of rows
-- (int)resultTableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-    //return the number of rows you want in this table view
+- (int)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     return self.searchResult.count;
 }
 
-- (UITableViewCell *)resultTableView:(UITableView *)restultTableView cellForRowAtIndexPath:(NSIndexPath *)indexPath{
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     //NSLog(@"table view indexpath.row = %d", indexPath.row);
-    resturantTableViewCell *cell = [restultTableView dequeueReusableCellWithIdentifier:@"ResultCell"];
+    resturantTableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"ResultCell"];
     
     Search *b = [self.searchResult objectAtIndex:indexPath.row];
     
@@ -122,6 +128,49 @@ NSString * const kYelpTokenSecret = @"mqtKIxMIR4iBtBPZCmCLEb-Dz3Y";
     return cell;
 }
 
+//filter view methods
+- (void)filterButton {
+    FilterViewController *fvc = [[FilterViewController alloc] init];
+    fvc.filters = self.filters;
+    [self.navigationController pushViewController:fvc animated:YES];
+}
+
+-(void) searchButtonClicked:(UISearchBar *)searchBar {
+    [searchBar resignFirstResponder];
+    NSMutableArray *categoryCodes = [[NSMutableArray alloc] init];
+    
+    //get filter options
+    for (NSString *cat in self.filters.category) {
+        NSString *code = [self.filters.categories objectForKey:cat];
+        [categoryCodes addObject:code];
+    }
+    //parse the options
+    NSString *category = [categoryCodes componentsJoinedByString:@","];
+    NSString *deals = self.filters.deals ? @"true" : @"false";
+    NSString *sort = [self.filters.categories objectForKey: self.filters.sortBy];
+    NSString *distance = [self.filters.distanceConversions objectForKey: self.filters.distance];
+    [self searchWithOptions:searchBar.text sort:sort categories:category deal:deals radius:distance];
+    
+}
+
+- (void) searchWithOptions: (NSString *)term
+                      sort: (NSString *)sort
+                categories: (NSString *)categories
+                      deal: (NSString *)deal
+                    radius: (NSString *)radius {
+    self.client = [[YelpClient alloc] initWithConsumerKey:kYelpConsumerKey consumerSecret:kYelpConsumerSecret accessToken:kYelpToken accessSecret:kYelpTokenSecret];
+    [self.client searchWithTerm:term sort:sort categories:categories radius:radius deal:deal
+                        success:^(AFHTTPRequestOperation *operation, id response) {
+                            
+                            self.searchResult = [Search loadInArray:[response objectForKey:@"businesses"]];
+                            NSLog(@"response: %@", response);
+                            [self.resultTableView reloadData];
+                            
+                        } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
+                            NSLog(@"error: %@", [error description]);
+                        }];
+
+}
 
 
 

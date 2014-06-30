@@ -7,7 +7,7 @@
 //
 
 #import <UIKit/UIKit.h>
-
-@interface FilterViewController : UIViewController
-
+#import "Filters.h"
+@interface FilterViewController : UIViewController <UITableViewDataSource, UITableViewDelegate>
+@property (strong, nonatomic) Filters *filters;
 @end
