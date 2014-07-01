@@ -24,12 +24,11 @@ NSString * const kYelpTokenSecret = @"mqtKIxMIR4iBtBPZCmCLEb-Dz3Y";
 
 @property (nonatomic, strong) YelpClient *client;
 
-@property (weak, nonatomic) IBOutlet UISearchBar *searchBarField;
+@property (strong, nonatomic) IBOutlet UISearchBar *searchBarField;
 @property (nonatomic,strong) NSArray *searchResult;
+@property (strong, nonatomic) UIButton *filterButton;
 
-@property (weak, nonatomic) IBOutlet UIBarButtonItem *filterButton;
-@property (weak, nonatomic) IBOutlet UITableView *resultTableView;
-@property (strong, nonatomic) Filters *filters;
+@property (strong, nonatomic) IBOutlet UITableView *resultTableView;
 
 
 @end
@@ -49,13 +48,29 @@ NSString * const kYelpTokenSecret = @"mqtKIxMIR4iBtBPZCmCLEb-Dz3Y";
 {
     [super viewDidLoad];
     // Do any additional setup after loading the view from its nib.
+    self.searchBarField = [[UISearchBar alloc] initWithFrame:CGRectMake(0.0, 0.0, 222, 44)];
+
     self.resultTableView.dataSource = self;
     self.resultTableView.delegate = self;
-    [self.resultTableView registerNib:[UINib nibWithNibName:@"resultTableViewCell" bundle:nil] forCellReuseIdentifier:@"ResultCell"];
-//    [self.filterButton addTarget:self action:@selector(filterButton) forControlEvents:UIControlEventTouchDown];
-    self.filterButton.action = @selector(filterButton);
-    [self.filterButton setTarget:self];
-    self.navigationItem.titleView = self.searchBarField;
+    [self.resultTableView registerNib:[UINib nibWithNibName:@"resturantTableViewCell" bundle:nil] forCellReuseIdentifier:@"resturantTableViewCell"];
+//    [self.filterButton addTarget:self action:@selector(touchfilterButton) forControlEvents:UIControlEventTouchDown];
+    self.filterButton = [[UIButton alloc]initWithFrame:CGRectMake(230,0,70,40)];
+    [self.filterButton setTitle:@"Filters" forState:UIControlStateNormal];
+    [self.filterButton addTarget:self action:@selector(touchfilterButton) forControlEvents:UIControlEventTouchDown];
+    
+    UIView *searchBar = [[UIView alloc] initWithFrame:CGRectMake(0.0, 0.0, 300, 44)];
+    
+    //adding search bar and button to view
+    [searchBar addSubview:self.searchBarField];
+    [searchBar addSubview:self.filterButton];
+    
+    
+    self.navigationItem.titleView = searchBar;
+    
+    
+//    self.navigationItem.titleView = self.searchBar;
+    self.resultTableView.rowHeight = 150;
+    
 
     
 }
@@ -98,6 +113,11 @@ NSString * const kYelpTokenSecret = @"mqtKIxMIR4iBtBPZCmCLEb-Dz3Y";
 //    
 //}
 
+- (void)viewWillAppear:(BOOL)animated {
+    //load default settings
+    self.filters = [[Filters alloc] init];
+}
+
 #pragma mark - Table view methods
 //number of rows
 - (int)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
@@ -106,7 +126,7 @@ NSString * const kYelpTokenSecret = @"mqtKIxMIR4iBtBPZCmCLEb-Dz3Y";
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     //NSLog(@"table view indexpath.row = %d", indexPath.row);
-    resturantTableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"ResultCell"];
+    resturantTableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"resturantTableViewCell"];
     
     Search *b = [self.searchResult objectAtIndex:indexPath.row];
     
@@ -129,10 +149,11 @@ NSString * const kYelpTokenSecret = @"mqtKIxMIR4iBtBPZCmCLEb-Dz3Y";
 }
 
 //filter view methods
-- (void)filterButton {
-    FilterViewController *fvc = [[FilterViewController alloc] init];
-    fvc.filters = self.filters;
-    [self.navigationController pushViewController:fvc animated:YES];
+- (void)touchfilterButton {
+    
+    FilterViewController *fv =[[FilterViewController alloc]init];
+    fv.filters = self.filters;
+    [self.navigationController pushViewController:fv animated:YES];
 }
 
 -(void) searchButtonClicked:(UISearchBar *)searchBar {

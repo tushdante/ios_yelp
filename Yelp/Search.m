@@ -37,7 +37,7 @@
     return self;
 }
 
-+ (NSArray *)loadInhArray: (NSArray *)array {
++ (NSArray *)loadInArray: (NSArray *)array {
     NSMutableArray *catalog = [[NSMutableArray alloc] init];
     
     for (NSDictionary *dictionary in array){

@@ -7,6 +7,7 @@
 //
 
 #import "FilterViewController.h"
+#import "SearchViewController.h"
 #import "AccordionCell.h"
 #import "MostPopularCell.h"
 #import "PriceCell.h"
@@ -176,9 +177,232 @@ int const TOTAL = 5;
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
+    //price
+    UITableViewCell *cell;
+    if (indexPath.section == PRICE) {
+        PriceCell *priceCell = [tableView dequeueReusableCellWithIdentifier:@"PriceCell"];
+        priceCell.priceControl.selectedSegmentIndex = self.filters.price;
+        [priceCell.priceControl addTarget:self action:@selector(setPriceFilter:) forControlEvents:UIControlEventValueChanged];
+        cell = priceCell;
+    }
     
+    //categories
+    if(indexPath.section == CATEGORY){
+        AccordionCell *categoryCell = [tableView dequeueReusableCellWithIdentifier:@"AccordionCell"];
+        
+        if (!self.showAllCategories){
+            if (indexPath.row == (CATEGORIES_ROW_NUMBER)) {
+                //show more option on the 4th row
+                categoryCell.rowLabel.text = @"Show more ...";
+            }else{
+                categoryCell.rowLabel.text = self.categories[indexPath.row];
+            }
+        }else{
+            NSLog(@"indexpath.row %d, catcount: %d", indexPath.row, ([self.categories count]-1));
+            if (indexPath.row == ([self.categories count]-1)) {
+                //show less option on the last row
+                categoryCell.rowLabel.text = @"Show Less ...";
+            }else{
+                categoryCell.rowLabel.text = self.categories[indexPath.row];
+            }
+            
+        }
+        cell = categoryCell;
+        
+        if([self isCategorySavedInFilteredSettings:self.categories[indexPath.row]]){
+            cell.accessoryType = UITableViewCellAccessoryCheckmark;
+        }else{
+            cell.accessoryType = UITableViewCellAccessoryNone;
+        }
+        
+    }
+    
+    //sort by
+    if(indexPath.section == SORT){
+        AccordionCell *sortByCell = [tableView dequeueReusableCellWithIdentifier:@"AccordionCell"];
+        sortByCell.rowLabel.text = self.sortBy[indexPath.row];
+        cell = sortByCell;
+        //NSLog(@"default sort: %@,%@", self.filterOptions.sortBy, self.sortBy[indexPath.row]);
+        
+        if([self.filters.sortBy isEqualToString:self.sortBy[indexPath.row]]){
+            cell.accessoryType = UITableViewCellAccessoryCheckmark;
+            //NSLog(@"equal");
+            self.checkedSortIndexPath = indexPath;
+        }else{
+            cell.accessoryType = UITableViewCellAccessoryNone;
+        }
+    }
+    
+    //distance
+    if(indexPath.section == DISTANCE){
+        AccordionCell *distanceCell = [tableView dequeueReusableCellWithIdentifier:@"AccordionCell"];
+        distanceCell.rowLabel.text = self.distance[indexPath.row];
+        cell = distanceCell;
+        //NSLog(@"default distance: %@,%@", self.filterOptions.distance, self.distance[indexPath.row]);
+        
+        if([self.filters.distance isEqualToString:self.distance[indexPath.row]]){
+            //NSLog(@"equal");
+            cell.accessoryType = UITableViewCellAccessoryCheckmark;
+            self.checkedDistanceIndexPath = indexPath;
+        }else{
+            cell.accessoryType = UITableViewCellAccessoryNone;
+        }
+    }
+    
+    //deals
+    if(indexPath.section == DEALS){
+        MostPopularCell *dealsCell = [tableView dequeueReusableCellWithIdentifier:@"MostPopularCell"];
+        [dealsCell.switchControl setOn: self.filters.deals animated:YES];
+        [dealsCell.switchControl addTarget:self action:@selector(dealsSwitchToggled:) forControlEvents:UIControlEventValueChanged];
+        dealsCell.cellLabel.text = @"Deals";
+        cell = dealsCell;
+
+    }
+    return cell;
     
     
 }
+- (void) showMore {
+    self.showAllCategories = YES;
+    [self.filterView reloadData];
+}
+
+- (void) showLess {
+    self.showAllCategories = NO;
+    [self.filterView reloadData];
+}
+
+- (BOOL) inArray: (NSMutableArray *)array item:(NSString *)item {
+    for (NSString *string in array){
+        if (string == item)
+            return YES;
+    }
+    return NO;
+}
+
+- (void)popFromArray:(NSMutableArray *)array item:(NSString *)item {
+    id toRemove;
+    for (NSString * string in array){
+        if (item == string){
+            toRemove = string;
+            break;
+        }
+    }
+    [array removeObject:toRemove];
+}
+- (void)saveFilterSettingArray: (NSArray *)array withKey: (NSString *)key {
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    [defaults setObject:array forKey:key];
+    [defaults synchronize];
+}
+
+- (void)saveFilterSettingObject: (id)obj withKey: (NSString *)key {
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    [defaults setObject:obj forKey:key];
+    [defaults synchronize];
+}
+
+- (void)saveFilterSettingInteger:(int)i withKey: (NSString *)key {
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    [defaults setInteger:i forKey:key];
+    [defaults synchronize];
+}
+
+- (void)saveFilterSettingBOOL: (BOOL)b  withKey: (NSString *)key {
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    [defaults setBool:b forKey:key];
+    [defaults synchronize];
+}
+
+#pragma mark Setting Filters
+
+- (void)dealsSwitchToggled:(id)sender {
+    UISwitch *theSwitch = (UISwitch *)sender;
+    if(theSwitch.on) {
+        // switch turned on
+        [self saveFilterSettingBOOL:YES withKey:@"deals"];
+        self.filters.deals = YES;
+    }
+    else {
+        // switch turned off
+        [self saveFilterSettingBOOL:NO withKey:@"deals"];
+        self.filters.deals = NO;
+    }
+}
+
+- (void)setPriceFilter:(id)sender {
+    UISegmentedControl *controlSegment = (UISegmentedControl *)sender;
+    [self saveFilterSettingInteger:controlSegment.selectedSegmentIndex withKey:@"price_control_index"];
+    self.filters.price = controlSegment.selectedSegmentIndex;
+}
+
+- (void)setSortByFilter:(id)sender{
+    [self saveFilterSettingObject:sender withKey:@"sort"];
+    //NSLog(@"sender sort: %@", sender);
+    self.filters.sortBy = sender;
+    
+}
+
+- (void)setDistanceFilter:(id)sender{
+    [self saveFilterSettingObject:sender withKey:@"distance"];
+    //NSLog(@"sender distance: %@", sender);
+    self.filters.distance = sender;
+}
+
+- (void)setCategoryFilter{
+    NSArray *array = [self.categoriesFilter copy];
+    //NSLog(@"setting category filter array: %@", array);
+    [self saveFilterSettingArray:array withKey:@"category"];
+    self.filters.category = [self.categoriesFilter copy];
+}
+
+- (BOOL)isCategorySavedInFilteredSettings: (NSString *)category{
+    //load saved defaults
+    for (NSString *cat in self.filters.category){
+        if (cat == category){
+            return YES;
+        }
+    }
+    
+    return NO;
+}
+
+#pragma Mark View
+- (void)viewWillAppear:(BOOL)animated {
+    
+    //load saved defaults
+    self.filters = [[Filters alloc] init];
+    //self.categoriesFilter = [[NSMutableArray alloc] init];
+    self.categoriesFilter = self.filters.category;
+    //based on filters select first row to show on distance
+    [self swapWith:self.filters.distance];
+    
+}
+
+- (void)viewWillDisappear:(BOOL)animated {
+    //saving tip default
+    [self setCategoryFilter];
+}
+
+#pragma Mark Swapping
+-(void)swapWith: (NSString *)selected{
+    //swap spots in array to have selected option on top
+    NSInteger row = 0;
+    for (NSString *option in self.distance) {
+        
+        if ([option isEqualToString:selected]) {
+            break;
+        }else{
+            row++;
+        }
+        
+    }
+    
+    NSInteger zero = 0;
+    NSMutableArray *swap = [NSMutableArray arrayWithArray:self.distance];
+    [swap exchangeObjectAtIndex:zero withObjectAtIndex:row];
+    self.distance = [swap mutableCopy];
+}
+
 
 @end

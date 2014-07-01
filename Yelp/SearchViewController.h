@@ -7,7 +7,8 @@
 //
 
 #import <UIKit/UIKit.h>
-
+#import "Filters.h"
 @interface SearchViewController : UIViewController <UITableViewDataSource, UITableViewDelegate>
+@property (strong, nonatomic) Filters *filters;
 
 @end
